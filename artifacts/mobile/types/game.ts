@@ -21,6 +21,7 @@ export interface PlayerStats {
   stagesCompleted: number;
   goldenPegsHit: number;
   lastDailyBonus: number;
+  lastBallResetDate: string; // "YYYY-MM-DD" — date of last daily ball grant
 }
 
 export interface GameSettings {

@@ -9,6 +9,8 @@ const KEYS = {
   HISTORY: 'plinko_drop_history',
 };
 
+export const DAILY_BALL_QUOTA = 10;
+
 const DEFAULT_SETTINGS: GameSettings = {
   soundEnabled: true,
   language: 'id',
@@ -24,7 +26,17 @@ const DEFAULT_STATS: PlayerStats = {
   stagesCompleted: 0,
   goldenPegsHit: 0,
   lastDailyBonus: 0,
+  lastBallResetDate: '',
 };
+
+/** Returns today's date string in "YYYY-MM-DD" format (local time). */
+export function todayString(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 export const storage = {
   getCash: async (): Promise<number> => {
@@ -39,8 +51,8 @@ export const storage = {
   getBalls: async (): Promise<number> => {
     try {
       const val = await AsyncStorage.getItem(KEYS.BALLS);
-      return val !== null ? parseInt(val, 10) : 30;
-    } catch { return 30; }
+      return val !== null ? parseInt(val, 10) : DAILY_BALL_QUOTA;
+    } catch { return DAILY_BALL_QUOTA; }
   },
   setBalls: async (count: number): Promise<void> => {
     try { await AsyncStorage.setItem(KEYS.BALLS, count.toString()); } catch {}

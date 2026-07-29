@@ -17,11 +17,12 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.altomedia.plinkocash",
       "infoPlist": {
-        "GADApplicationIdentifier": "ca-app-pub-6881903456221433~3983256819"
+        "GADApplicationIdentifier": "ca-app-pub-6881903056221433~3983256819"
       }
     },
     "android": {
       "package": "com.altomedia.plinkocash",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#020617"

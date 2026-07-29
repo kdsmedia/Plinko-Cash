@@ -19,9 +19,10 @@ const BANNER_UNIT_ID = __DEV__
 
 export function BannerAdBlock() {
   if (!BannerAd || !BannerAdSize) {
+    // Placeholder sized to match standard AdMob banner (320×50)
     return (
       <View style={styles.placeholder}>
-        <Text style={styles.placeholderText}>AD</Text>
+        <Text style={styles.placeholderText}>ADVERTISEMENT</Text>
       </View>
     );
   }
@@ -30,7 +31,7 @@ export function BannerAdBlock() {
     <View style={styles.container}>
       <BannerAd
         unitId={BANNER_UNIT_ID}
-        size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+        size={BannerAdSize.BANNER}
         requestOptions={{ requestNonPersonalizedAdsOnly: false }}
         onAdFailedToLoad={() => {}}
       />
@@ -41,15 +42,21 @@ export function BannerAdBlock() {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
+    height: 50, // Standard AdMob banner height (320×50)
     alignItems: 'center',
-    minHeight: 52,
+    justifyContent: 'center',
     backgroundColor: '#020617',
   },
   placeholder: {
-    width: '100%', height: 50,
-    backgroundColor: '#1e293b', borderRadius: 8,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#334155',
+    width: '100%',
+    height: 50, // Precise standard banner height
+    backgroundColor: '#1e293b',
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderStyle: 'dashed',
   },
-  placeholderText: { fontSize: 11, color: '#475569', letterSpacing: 2 },
+  placeholderText: { fontSize: 10, color: '#475569', letterSpacing: 2 },
 });

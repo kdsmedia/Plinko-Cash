@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -66,10 +65,19 @@ export function GameHeader() {
 
       {/* Actions */}
       <View style={styles.actions}>
+        {/* Daily Bonus */}
+        <TouchableOpacity style={styles.iconBtn} onPress={() => setIsDailyOpen(true)}>
+          <MaterialCommunityIcons name="calendar-star" size={18} color="#10b981" />
+          <View style={[styles.dot, { backgroundColor: '#10b981' }]} />
+        </TouchableOpacity>
+
+        {/* Lucky Spin */}
         <TouchableOpacity style={styles.iconBtn} onPress={() => setIsSpinWheelOpen(true)}>
           <MaterialCommunityIcons name="gift" size={18} color="#f59e0b" />
           <View style={styles.dot} />
         </TouchableOpacity>
+
+        {/* Sound */}
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={() => setSettings(p => ({ ...p, soundEnabled: !p.soundEnabled }))}
@@ -80,6 +88,8 @@ export function GameHeader() {
             color={settings.soundEnabled ? '#10b981' : '#64748b'}
           />
         </TouchableOpacity>
+
+        {/* Info */}
         <TouchableOpacity style={styles.iconBtn} onPress={() => setIsInfoOpen(true)}>
           <Ionicons name="information-circle-outline" size={18} color="#06b6d4" />
         </TouchableOpacity>

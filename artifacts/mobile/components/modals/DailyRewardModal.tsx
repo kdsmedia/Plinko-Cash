@@ -11,8 +11,10 @@ const PRIZES = [500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
 const SEG = 360 / PRIZES.length;
 const COLORS = ['#f59e0b','#ea580c','#10b981','#3b82f6','#8b5cf6','#ec4899','#06b6d4','#f97316'];
 
+const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 jam
+
 export function DailyRewardModal() {
-  const { isDailyOpen, setIsDailyOpen, handleClaimDaily, settings } = useGame();
+  const { isDailyOpen, setIsDailyOpen, handleClaimDaily, settings, stats } = useGame();
   const { showAd } = useRewardedAd();
   const isIndo = settings.language === 'id';
 
@@ -22,8 +24,21 @@ export function DailyRewardModal() {
   const rotAnim = useRef(new Animated.Value(0)).current;
   const currentRot = useRef(0);
 
+  // Check 24-hour cooldown
+  const lastClaim = stats.lastDailyBonus ?? 0;
+  const now = Date.now();
+  const cooldownRemaining = COOLDOWN_MS - (now - lastClaim);
+  const isOnCooldown = lastClaim > 0 && cooldownRemaining > 0;
+
+  const formatCooldown = () => {
+    const totalSec = Math.ceil(cooldownRemaining / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    return `${h}j ${m}m`;
+  };
+
   const handleSpin = () => {
-    if (spinning || prize !== null) return;
+    if (spinning || prize !== null || isOnCooldown) return;
     setSpinning(true);
     const idx = Math.floor(Math.random() * PRIZES.length);
     const target = currentRot.current + 360 * 6 + (360 - (idx * SEG + SEG / 2));
@@ -75,92 +90,112 @@ export function DailyRewardModal() {
           </TouchableOpacity>
 
           <View style={styles.iconBox}>
-            <MaterialCommunityIcons name="gift" size={28} color="#f59e0b" />
+            <MaterialCommunityIcons name="calendar-star" size={28} color="#10b981" />
           </View>
           <Text style={styles.title}>{isIndo ? 'Bonus Harian' : 'Daily Bonus'}</Text>
           <Text style={styles.sub}>
-            {isIndo ? 'Putar roda untuk klaim poin gratis!' : 'Spin the wheel for free points!'}
+            {isOnCooldown
+              ? (isIndo ? `Tersedia lagi dalam ${formatCooldown()}` : `Available again in ${formatCooldown()}`)
+              : (isIndo ? 'Putar roda untuk klaim poin gratis!' : 'Spin the wheel for free points!')}
           </Text>
 
-          {/* Wheel */}
-          <View style={styles.wheelWrap}>
-            <View style={styles.pointer} />
-            <Animated.View style={[styles.wheel, { transform: [{ rotate: spin }] }]}>
-              {PRIZES.map((_, i) => {
-                const angle = i * SEG;
-                return (
-                  <View
-                    key={i}
-                    style={[
-                      styles.segment,
-                      { transform: [{ rotate: `${angle}deg` }], borderTopColor: COLORS[i % COLORS.length] },
-                    ]}
-                  />
-                );
-              })}
-              {/* Labels */}
-              {PRIZES.map((p, i) => {
-                const angle = (i * SEG + SEG / 2) * (Math.PI / 180);
-                const r = 68;
-                return (
-                  <View
-                    key={`lbl-${i}`}
-                    style={[
-                      styles.labelWrap,
-                      {
-                        left: 90 + r * Math.cos(angle - Math.PI / 2) - 18,
-                        top:  90 + r * Math.sin(angle - Math.PI / 2) - 10,
-                        transform: [{ rotate: `${i * SEG + SEG / 2}deg` }],
-                      },
-                    ]}
-                  >
-                    <Text style={styles.labelText}>{p >= 1000 ? `${p / 1000}k` : p}</Text>
-                  </View>
-                );
-              })}
-              <View style={styles.hub}>
-                <Text style={styles.hubText}>POIN</Text>
-              </View>
-            </Animated.View>
-          </View>
-
-          {/* Action */}
-          {prize !== null ? (
-            <View style={styles.prizeRow}>
-              <Text style={styles.prizeText}>+{prize.toLocaleString('id-ID')} POIN</Text>
-              <Text style={styles.prizeHint}>
-                {isIndo ? '≈ Rp' : '≈ Rp'}{(prize * 0.01).toLocaleString('id-ID', { minimumFractionDigits: 0 })}
+          {/* Cooldown screen */}
+          {isOnCooldown ? (
+            <View style={styles.cooldownBox}>
+              <MaterialCommunityIcons name="clock-outline" size={56} color="#334155" />
+              <Text style={styles.cooldownTitle}>{isIndo ? 'Sudah Diklaim Hari Ini' : 'Already Claimed Today'}</Text>
+              <Text style={styles.cooldownSub}>
+                {isIndo
+                  ? 'Kembali besok untuk bonus harian berikutnya!'
+                  : 'Come back tomorrow for your next daily bonus!'}
               </Text>
-              <TouchableOpacity
-                style={[styles.claimBtn, claiming && styles.btnDisabled]}
-                onPress={handleClaim}
-                disabled={claiming}
-              >
-                {claiming ? (
-                  <ActivityIndicator color="#020617" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="play-circle" size={18} color="#020617" />
-                    <Text style={styles.claimBtnText}>
-                      {isIndo ? 'Tonton Iklan & Klaim' : 'Watch Ad & Claim'}
-                    </Text>
-                  </>
-                )}
+              <TouchableOpacity style={styles.cooldownBtn} onPress={handleClose}>
+                <Text style={styles.cooldownBtnText}>OK</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity
-              style={[styles.spinBtn, spinning && styles.btnDisabled]}
-              onPress={handleSpin}
-              disabled={spinning}
-            >
-              <MaterialCommunityIcons name="autorenew" size={18} color="#020617" />
-              <Text style={styles.spinBtnText}>
-                {spinning
-                  ? (isIndo ? 'Berputar...' : 'Spinning...')
-                  : (isIndo ? 'Putar Roda' : 'Spin Wheel')}
-              </Text>
-            </TouchableOpacity>
+            <>
+              {/* Wheel */}
+              <View style={styles.wheelWrap}>
+                <View style={styles.pointer} />
+                <Animated.View style={[styles.wheel, { transform: [{ rotate: spin }] }]}>
+                  {PRIZES.map((_, i) => {
+                    const angle = i * SEG;
+                    return (
+                      <View
+                        key={i}
+                        style={[
+                          styles.segment,
+                          { transform: [{ rotate: `${angle}deg` }], borderTopColor: COLORS[i % COLORS.length] },
+                        ]}
+                      />
+                    );
+                  })}
+                  {/* Labels */}
+                  {PRIZES.map((p, i) => {
+                    const angle = (i * SEG + SEG / 2) * (Math.PI / 180);
+                    const r = 68;
+                    return (
+                      <View
+                        key={`lbl-${i}`}
+                        style={[
+                          styles.labelWrap,
+                          {
+                            left: 90 + r * Math.cos(angle - Math.PI / 2) - 18,
+                            top:  90 + r * Math.sin(angle - Math.PI / 2) - 10,
+                            transform: [{ rotate: `${i * SEG + SEG / 2}deg` }],
+                          },
+                        ]}
+                      >
+                        <Text style={styles.labelText}>{p >= 1000 ? `${p / 1000}k` : p}</Text>
+                      </View>
+                    );
+                  })}
+                  <View style={styles.hub}>
+                    <Text style={styles.hubText}>POIN</Text>
+                  </View>
+                </Animated.View>
+              </View>
+
+              {/* Action */}
+              {prize !== null ? (
+                <View style={styles.prizeRow}>
+                  <Text style={styles.prizeText}>+{prize.toLocaleString('id-ID')} POIN</Text>
+                  <Text style={styles.prizeHint}>
+                    {isIndo ? '≈ Rp' : '≈ Rp'}{(prize * 0.01).toLocaleString('id-ID', { minimumFractionDigits: 0 })}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.claimBtn, claiming && styles.btnDisabled]}
+                    onPress={handleClaim}
+                    disabled={claiming}
+                  >
+                    {claiming ? (
+                      <ActivityIndicator color="#020617" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons name="play-circle" size={18} color="#020617" />
+                        <Text style={styles.claimBtnText}>
+                          {isIndo ? 'Tonton Iklan & Klaim' : 'Watch Ad & Claim'}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.spinBtn, spinning && styles.btnDisabled]}
+                  onPress={handleSpin}
+                  disabled={spinning}
+                >
+                  <MaterialCommunityIcons name="autorenew" size={18} color="#020617" />
+                  <Text style={styles.spinBtnText}>
+                    {spinning
+                      ? (isIndo ? 'Berputar...' : 'Spinning...')
+                      : (isIndo ? 'Putar Roda' : 'Spin Wheel')}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
       </View>
@@ -179,11 +214,21 @@ const styles = StyleSheet.create({
   closeBtn: { position: 'absolute', top: 14, right: 14, padding: 6 },
   iconBox: {
     width: 52, height: 52, borderRadius: 14,
-    backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#f59e0b44',
+    backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#10b98144',
     alignItems: 'center', justifyContent: 'center', marginBottom: 8,
   },
   title: { fontFamily: 'Inter_700Bold', fontSize: 18, color: '#fbbf24', marginBottom: 2 },
   sub: { fontFamily: 'Inter_400Regular', fontSize: 12, color: '#64748b', marginBottom: 16, textAlign: 'center' },
+
+  cooldownBox: { width: '100%', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  cooldownTitle: { fontFamily: 'Inter_700Bold', fontSize: 15, color: '#f1f5f9' },
+  cooldownSub: { fontFamily: 'Inter_400Regular', fontSize: 12, color: '#64748b', textAlign: 'center' },
+  cooldownBtn: {
+    width: '100%', backgroundColor: '#1e293b', borderRadius: 14,
+    paddingVertical: 13, alignItems: 'center', marginTop: 4,
+    borderWidth: 1, borderColor: '#334155',
+  },
+  cooldownBtnText: { fontFamily: 'Inter_700Bold', fontSize: 14, color: '#94a3b8' },
 
   wheelWrap: { width: 180, height: 200, alignItems: 'center', justifyContent: 'flex-start', marginBottom: 18 },
   pointer: {

@@ -8,7 +8,7 @@ import React, {
   ReactNode,
 } from 'react';
 import * as Haptics from 'expo-haptics';
-import { storage } from '@/utils/storage';
+import { storage, todayString, DAILY_BALL_QUOTA } from '@/utils/storage';
 import { GameSettings, PlayerStats, HistoryRecord, BallType } from '@/types/game';
 
 interface GameContextType {
@@ -48,7 +48,7 @@ const GameContext = createContext<GameContextType | null>(null);
 export function GameProvider({ children }: { children: ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [cash, setCash] = useState(5000);
-  const [ballsCount, setBallsCount] = useState(30);
+  const [ballsCount, setBallsCount] = useState(DAILY_BALL_QUOTA);
   const [settings, setSettings] = useState<GameSettings>({
     soundEnabled: true,
     language: 'id',
@@ -63,6 +63,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     stagesCompleted: 0,
     goldenPegsHit: 0,
     lastDailyBonus: 0,
+    lastBallResetDate: '',
   });
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [isAutoDropping, setIsAutoDropping] = useState(false);
@@ -74,7 +75,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isAdRewardOpen, setIsAdRewardOpen] = useState(false);
 
-  // Load persisted data on mount
+  // Load persisted data on mount + apply daily ball reset
   useEffect(() => {
     (async () => {
       const [c, b, s, st, h] = await Promise.all([
@@ -84,11 +85,27 @@ export function GameProvider({ children }: { children: ReactNode }) {
         storage.getStats(),
         storage.getHistory(),
       ]);
+
       setCash(c);
-      setBallsCount(b);
       setSettings(s);
       setStats(st);
       setHistory(h);
+
+      // Daily ball quota: reset to DAILY_BALL_QUOTA if it's a new day
+      const today = todayString();
+      const lastReset = st.lastBallResetDate ?? '';
+      if (lastReset !== today) {
+        // New day — grant fresh quota of balls (replace current count)
+        setBallsCount(DAILY_BALL_QUOTA);
+        await storage.setBalls(DAILY_BALL_QUOTA);
+        // Update the reset date in stats
+        const updatedStats: PlayerStats = { ...st, lastBallResetDate: today };
+        setStats(updatedStats);
+        await storage.saveStats(updatedStats);
+      } else {
+        setBallsCount(b);
+      }
+
       setIsLoaded(true);
     })();
   }, []);
@@ -145,6 +162,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const handleClaimDaily = useCallback((amount: number) => {
     setCash((prev) => prev + amount);
+    // Mark last daily bonus timestamp
+    setStats((prev) => ({ ...prev, lastDailyBonus: Date.now() }));
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, []);
 
@@ -172,11 +191,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const handleResetData = useCallback(async () => {
     await storage.resetData();
     setCash(5000);
-    setBallsCount(30);
+    setBallsCount(DAILY_BALL_QUOTA);
     setStats({
       totalDrops: 0, totalSpent: 0, totalEarned: 0,
       highestMultiplier: 0, highestSingleWin: 0, stagesCompleted: 0,
-      goldenPegsHit: 0, lastDailyBonus: 0,
+      goldenPegsHit: 0, lastDailyBonus: 0, lastBallResetDate: todayString(),
     });
     setHistory([]);
   }, []);

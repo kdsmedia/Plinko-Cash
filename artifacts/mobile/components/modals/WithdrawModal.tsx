@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useGame } from '@/contexts/GameContext';
+import { useRewardedAd } from '@/hooks/useRewardedAd';
 
 // 1000 POIN = Rp10  →  Rp = POIN * 0.01
 const RATE = 0.01;
@@ -19,6 +20,7 @@ const NOMINAL_OPTIONS = [
 
 export function WithdrawModal() {
   const { isWithdrawOpen, setIsWithdrawOpen, cash, handleWithdraw, settings } = useGame();
+  const { showAd } = useRewardedAd();
   const isIndo = settings.language === 'id';
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -50,15 +52,18 @@ export function WithdrawModal() {
       return;
     }
     setProcessing(true);
-    setTimeout(() => {
-      setProcessing(false);
-      handleWithdraw(selected);
-      const rp = (selected * RATE).toLocaleString('id-ID', { minimumFractionDigits: 0 });
-      setSuccess(isIndo
-        ? `Penarikan ${selected.toLocaleString('id-ID')} POIN (Rp${rp}) ke DANA ${phone} berhasil!`
-        : `Withdrawal of ${selected.toLocaleString()} pts (Rp${rp}) to DANA ${phone} done!`
-      );
-    }, 1800);
+    // Show rewarded ad before processing withdrawal
+    showAd(() => {
+      setTimeout(() => {
+        setProcessing(false);
+        handleWithdraw(selected);
+        const rp = (selected * RATE).toLocaleString('id-ID', { minimumFractionDigits: 0 });
+        setSuccess(isIndo
+          ? `Penarikan ${selected.toLocaleString('id-ID')} POIN (Rp${rp}) ke DANA ${phone} berhasil!`
+          : `Withdrawal of ${selected.toLocaleString()} pts (Rp${rp}) to DANA ${phone} done!`
+        );
+      }, 1800);
+    });
   };
 
   return (
@@ -134,6 +139,14 @@ export function WithdrawModal() {
               <Text style={styles.summaryVal}>{selected.toLocaleString('id-ID')} POIN → Rp{(selected * RATE).toLocaleString('id-ID')}</Text>
             </View>
 
+            {/* Ad notice */}
+            <View style={styles.adNotice}>
+              <Ionicons name="tv-outline" size={13} color="#f59e0b" />
+              <Text style={styles.adNoticeText}>
+                {isIndo ? 'Tonton iklan singkat untuk memproses penarikan' : 'Watch a short ad to process withdrawal'}
+              </Text>
+            </View>
+
             {/* Messages */}
             {error !== '' && (
               <View style={styles.errorBox}>
@@ -153,7 +166,10 @@ export function WithdrawModal() {
               {processing ? (
                 <ActivityIndicator color="#020617" />
               ) : (
-                <Text style={styles.submitBtnText}>{isIndo ? 'TARIK SEKARANG' : 'WITHDRAW NOW'}</Text>
+                <>
+                  <Ionicons name="play-circle" size={18} color="#020617" />
+                  <Text style={styles.submitBtnText}>{isIndo ? 'TONTON IKLAN & TARIK' : 'WATCH AD & WITHDRAW'}</Text>
+                </>
               )}
             </TouchableOpacity>
           </ScrollView>
@@ -206,6 +222,13 @@ const styles = StyleSheet.create({
   },
   summaryLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: '#94a3b8' },
   summaryVal: { fontFamily: 'Inter_700Bold', fontSize: 12, color: '#f59e0b' },
+  adNotice: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#f59e0b15', borderRadius: 10,
+    borderWidth: 1, borderColor: '#f59e0b33',
+    padding: 10, marginTop: 10,
+  },
+  adNoticeText: { fontFamily: 'Inter_400Regular', fontSize: 11, color: '#f59e0b', flex: 1 },
   errorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: '#ef444415', borderRadius: 10,
@@ -222,7 +245,9 @@ const styles = StyleSheet.create({
   successText: { fontFamily: 'Inter_400Regular', fontSize: 11, color: '#10b981', flex: 1 },
   submitBtn: {
     backgroundColor: '#06b6d4', borderRadius: 14,
-    paddingVertical: 14, alignItems: 'center', marginTop: 14, marginBottom: 6,
+    paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
+    flexDirection: 'row', gap: 8,
+    marginTop: 14, marginBottom: 6,
   },
   submitBtnText: { fontFamily: 'Inter_700Bold', fontSize: 15, color: '#020617' },
 });
