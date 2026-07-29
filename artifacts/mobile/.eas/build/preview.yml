@@ -6,8 +6,10 @@ build:
         name: Install pnpm v10
         command: npm install -g pnpm@10.26.1
     - eas/install_node_modules
-    - eas/prebuild:
-        inputs:
-          platform: android
+    - run:
+        name: Prebuild
+        command: |
+          cd artifacts/mobile
+          pnpm exec expo prebuild --platform android --non-interactive --skip-dependency-update
     - eas/run_gradle
     - eas/find_and_upload_build_artifacts
