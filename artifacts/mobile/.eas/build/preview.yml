@@ -10,6 +10,6 @@ build:
         name: Prebuild
         command: |
           cd artifacts/mobile
-          pnpm exec expo prebuild --platform android --non-interactive --skip-dependency-update
+          pnpm exec expo prebuild --platform android --non-interactive --no-install
     - eas/run_gradle
     - eas/find_and_upload_build_artifacts
