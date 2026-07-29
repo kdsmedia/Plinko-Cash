@@ -61,6 +61,7 @@ export function SpinWheelModal() {
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<Segment | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [adError, setAdError] = useState('');
   const rotAnim = useRef(new Animated.Value(0)).current;
   const currentRot = useRef(0);
 
@@ -68,6 +69,7 @@ export function SpinWheelModal() {
     if (spinning || claiming) return;
     setIsSpinWheelOpen(false);
     setResult(null);
+    setAdError('');
     rotAnim.setValue(0);
     currentRot.current = 0;
   };
@@ -76,6 +78,7 @@ export function SpinWheelModal() {
     if (spinning) return;
     setSpinning(true);
     setResult(null);
+    setAdError('');
     const idx = weighted();
     const target = currentRot.current + 360 * 12 + (360 - (idx * SEG_ANGLE + SEG_ANGLE / 2));
     currentRot.current = target;
@@ -95,12 +98,22 @@ export function SpinWheelModal() {
       return;
     }
     setClaiming(true);
-    // Rewarded ad before giving prize
-    showAd(() => {
-      handleWinSpinWheel(result.type, result.value);
-      setClaiming(false);
-      close();
-    });
+    setAdError('');
+    showAd(
+      () => {
+        // Ad completed — give reward
+        handleWinSpinWheel(result.type, result.value);
+        setClaiming(false);
+        close();
+      },
+      () => {
+        // Ad dismissed/cancelled — reset so user can retry
+        setClaiming(false);
+        setAdError(isIndo
+          ? 'Iklan dibatalkan. Tonton iklan hingga selesai untuk klaim hadiah.'
+          : 'Ad cancelled. Watch the full ad to claim your reward.');
+      }
+    );
   };
 
   const spin = rotAnim.interpolate({ inputRange: [0, 360], outputRange: ['0deg', '360deg'] });
@@ -145,6 +158,14 @@ export function SpinWheelModal() {
               </SvgText>
             </Svg>
           </Animated.View>
+
+          {/* Ad error */}
+          {adError !== '' && (
+            <View style={styles.adErrBox}>
+              <Ionicons name="alert-circle" size={13} color="#f59e0b" />
+              <Text style={styles.adErrText}>{adError}</Text>
+            </View>
+          )}
 
           {/* Action */}
           {result ? (
@@ -213,6 +234,13 @@ const styles = StyleSheet.create({
     borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: '#f59e0b',
     zIndex: 10, marginBottom: -6,
   },
+  adErrBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#f59e0b15', borderRadius: 10,
+    borderWidth: 1, borderColor: '#f59e0b33',
+    padding: 8, marginTop: 8, width: '100%',
+  },
+  adErrText: { fontFamily: 'Inter_400Regular', fontSize: 10, color: '#f59e0b', flex: 1 },
   spinBtn: {
     width: '100%', flexDirection: 'row',
     backgroundColor: '#f59e0b', borderRadius: 14,

@@ -18,15 +18,16 @@ export function AdRewardModal() {
   const [countdown, setCountdown] = useState(5);
   const [completed, setCompleted] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const [exchangeAmt, setExchangeAmt] = useState(1);
   const [exMsg, setExMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Reset on open
+  // Reset on open/close
   useEffect(() => {
     if (!isAdRewardOpen) {
       setCountdown(5); setCompleted(false); setPlaying(false);
-      setExMsg(null); setTab('ad');
+      setClaiming(false); setExMsg(null); setTab('ad');
     } else {
       startAdCountdown();
     }
@@ -63,12 +64,20 @@ export function AdRewardModal() {
   }, [completed, pulseAnim]);
 
   const handleClaimAd = () => {
-    if (!completed) return;
-    // Show real rewarded ad
-    showAd(() => {
-      handleClaimAdBalls(2);
-      setIsAdRewardOpen(false);
-    });
+    if (!completed || claiming) return;
+    setClaiming(true);
+    showAd(
+      () => {
+        // Ad completed — give balls
+        handleClaimAdBalls(2);
+        setClaiming(false);
+        setIsAdRewardOpen(false);
+      },
+      () => {
+        // Ad dismissed/cancelled — unlock button so user can retry
+        setClaiming(false);
+      }
+    );
   };
 
   const handleExchange = () => {
@@ -83,16 +92,27 @@ export function AdRewardModal() {
       });
       return;
     }
-    // Show rewarded ad before exchange
-    showAd(() => {
-      handleExchangePoints(cost, exchangeAmt);
-      setExMsg({
-        ok: true,
-        text: isIndo
-          ? `Berhasil! −${cost.toLocaleString('id-ID')} POIN → +${exchangeAmt} Bola`
-          : `Done! −${cost.toLocaleString()} pts → +${exchangeAmt} balls`,
-      });
-    });
+    showAd(
+      () => {
+        // Ad completed — do exchange
+        handleExchangePoints(cost, exchangeAmt);
+        setExMsg({
+          ok: true,
+          text: isIndo
+            ? `Berhasil! −${cost.toLocaleString('id-ID')} POIN → +${exchangeAmt} Bola`
+            : `Done! −${cost.toLocaleString()} pts → +${exchangeAmt} balls`,
+        });
+      },
+      () => {
+        // Ad dismissed/cancelled
+        setExMsg({
+          ok: false,
+          text: isIndo
+            ? 'Iklan dibatalkan. Tonton iklan hingga selesai untuk tukar poin.'
+            : 'Ad cancelled. Watch the full ad to exchange points.',
+        });
+      }
+    );
   };
 
   return (
@@ -151,7 +171,7 @@ export function AdRewardModal() {
                     </View>
                   </>
                 )}
-                {completed && (
+                {completed && !claiming && (
                   <Animated.View style={[styles.doneWrap, { transform: [{ scale: pulseAnim }] }]}>
                     <Ionicons name="checkmark-circle" size={48} color="#10b981" />
                     <Text style={styles.doneTitle}>{isIndo ? 'Iklan Selesai!' : 'Ad Complete!'}</Text>
@@ -160,15 +180,17 @@ export function AdRewardModal() {
                 )}
               </View>
               <TouchableOpacity
-                style={[styles.claimBtn, !completed && styles.btnDisabled]}
+                style={[styles.claimBtn, (!completed || claiming) && styles.btnDisabled]}
                 onPress={handleClaimAd}
-                disabled={!completed}
+                disabled={!completed || claiming}
               >
                 <MaterialCommunityIcons name="star-circle" size={18} color="#020617" />
                 <Text style={styles.claimBtnText}>
-                  {completed
-                    ? (isIndo ? 'KLAIM +2 BOLA' : 'CLAIM +2 BALLS')
-                    : (isIndo ? 'Tunggu Iklan...' : 'Wait for Ad...')}
+                  {claiming
+                    ? (isIndo ? 'Menampilkan Iklan...' : 'Showing Ad...')
+                    : completed
+                      ? (isIndo ? 'KLAIM +2 BOLA' : 'CLAIM +2 BALLS')
+                      : (isIndo ? 'Tunggu Iklan...' : 'Wait for Ad...')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -250,7 +272,6 @@ const styles = StyleSheet.create({
   tabText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: '#64748b' },
   tabTextActive: { color: '#020617' },
   tabBody: { gap: 12 },
-
   adScreen: {
     height: 148, backgroundColor: '#020617', borderRadius: 14,
     borderWidth: 1, borderColor: '#1e293b',
@@ -273,7 +294,6 @@ const styles = StyleSheet.create({
   },
   claimBtnText: { fontFamily: 'Inter_700Bold', fontSize: 14, color: '#020617' },
   btnDisabled: { opacity: 0.4 },
-
   exBalance: {
     backgroundColor: '#020617', borderRadius: 12,
     padding: 12, flexDirection: 'row', alignItems: 'center',

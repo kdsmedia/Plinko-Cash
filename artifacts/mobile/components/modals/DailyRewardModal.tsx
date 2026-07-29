@@ -21,6 +21,7 @@ export function DailyRewardModal() {
   const [spinning, setSpinning] = useState(false);
   const [prize, setPrize] = useState<number | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [adError, setAdError] = useState('');
   const rotAnim = useRef(new Animated.Value(0)).current;
   const currentRot = useRef(0);
 
@@ -39,6 +40,7 @@ export function DailyRewardModal() {
 
   const handleSpin = () => {
     if (spinning || prize !== null || isOnCooldown) return;
+    setAdError('');
     setSpinning(true);
     const idx = Math.floor(Math.random() * PRIZES.length);
     const target = currentRot.current + 360 * 6 + (360 - (idx * SEG + SEG / 2));
@@ -57,21 +59,32 @@ export function DailyRewardModal() {
   const handleClaim = () => {
     if (!prize || claiming) return;
     setClaiming(true);
-    // Show rewarded ad before giving reward
-    showAd(() => {
-      handleClaimDaily(prize);
-      setClaiming(false);
-      setPrize(null);
-      setIsDailyOpen(false);
-      rotAnim.setValue(0);
-      currentRot.current = 0;
-    });
+    setAdError('');
+    showAd(
+      () => {
+        // Ad completed — give reward
+        handleClaimDaily(prize);
+        setClaiming(false);
+        setPrize(null);
+        setIsDailyOpen(false);
+        rotAnim.setValue(0);
+        currentRot.current = 0;
+      },
+      () => {
+        // Ad dismissed/cancelled — reset so user can retry
+        setClaiming(false);
+        setAdError(isIndo
+          ? 'Iklan dibatalkan. Tonton iklan hingga selesai untuk klaim hadiah.'
+          : 'Ad cancelled. Watch the full ad to claim your reward.');
+      }
+    );
   };
 
   const handleClose = () => {
     if (spinning || claiming) return;
     setIsDailyOpen(false);
     setPrize(null);
+    setAdError('');
     rotAnim.setValue(0);
     currentRot.current = 0;
   };
@@ -131,7 +144,6 @@ export function DailyRewardModal() {
                       />
                     );
                   })}
-                  {/* Labels */}
                   {PRIZES.map((p, i) => {
                     const angle = (i * SEG + SEG / 2) * (Math.PI / 180);
                     const r = 68;
@@ -157,12 +169,20 @@ export function DailyRewardModal() {
                 </Animated.View>
               </View>
 
+              {/* Ad error message */}
+              {adError !== '' && (
+                <View style={styles.adErrBox}>
+                  <Ionicons name="alert-circle" size={13} color="#f59e0b" />
+                  <Text style={styles.adErrText}>{adError}</Text>
+                </View>
+              )}
+
               {/* Action */}
               {prize !== null ? (
                 <View style={styles.prizeRow}>
                   <Text style={styles.prizeText}>+{prize.toLocaleString('id-ID')} POIN</Text>
                   <Text style={styles.prizeHint}>
-                    {isIndo ? '≈ Rp' : '≈ Rp'}{(prize * 0.01).toLocaleString('id-ID', { minimumFractionDigits: 0 })}
+                    ≈ Rp{(prize * 0.01).toLocaleString('id-ID', { minimumFractionDigits: 0 })}
                   </Text>
                   <TouchableOpacity
                     style={[styles.claimBtn, claiming && styles.btnDisabled]}
@@ -230,7 +250,7 @@ const styles = StyleSheet.create({
   },
   cooldownBtnText: { fontFamily: 'Inter_700Bold', fontSize: 14, color: '#94a3b8' },
 
-  wheelWrap: { width: 180, height: 200, alignItems: 'center', justifyContent: 'flex-start', marginBottom: 18 },
+  wheelWrap: { width: 180, height: 200, alignItems: 'center', justifyContent: 'flex-start', marginBottom: 10 },
   pointer: {
     width: 0, height: 0,
     borderLeftWidth: 9, borderRightWidth: 9, borderBottomWidth: 17,
@@ -244,14 +264,11 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   segment: {
-    position: 'absolute',
-    top: 0, left: 90,
+    position: 'absolute', top: 0, left: 90,
     width: 0, height: 0,
-    borderLeftWidth: 90, borderRightWidth: 0,
-    borderTopWidth: 90,
+    borderLeftWidth: 90, borderRightWidth: 0, borderTopWidth: 90,
     borderLeftColor: 'transparent', borderRightColor: 'transparent',
-    transformOrigin: '0% 100%',
-    opacity: 0.9,
+    transformOrigin: '0% 100%', opacity: 0.9,
   },
   labelWrap: { position: 'absolute', width: 36, height: 20, alignItems: 'center', justifyContent: 'center' },
   labelText: { fontFamily: 'Inter_700Bold', fontSize: 7.5, color: '#fff' },
@@ -262,6 +279,14 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: '#0f172a', zIndex: 5,
   },
   hubText: { fontFamily: 'Inter_700Bold', fontSize: 6, color: '#020617' },
+
+  adErrBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#f59e0b15', borderRadius: 10,
+    borderWidth: 1, borderColor: '#f59e0b33',
+    padding: 8, marginBottom: 8, width: '100%',
+  },
+  adErrText: { fontFamily: 'Inter_400Regular', fontSize: 10, color: '#f59e0b', flex: 1 },
 
   prizeRow: { width: '100%', alignItems: 'center', gap: 8 },
   prizeText: { fontFamily: 'Inter_700Bold', fontSize: 22, color: '#10b981' },

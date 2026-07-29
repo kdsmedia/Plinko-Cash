@@ -48,22 +48,32 @@ export function WithdrawModal() {
       return;
     }
     if (cash < selected) {
-      setError(isIndo ? `Poin tidak cukup!` : 'Insufficient points!');
+      setError(isIndo ? 'Poin tidak cukup!' : 'Insufficient points!');
       return;
     }
     setProcessing(true);
-    // Show rewarded ad before processing withdrawal
-    showAd(() => {
-      setTimeout(() => {
+    // Show rewarded ad — always resolves via onRewarded or onCancelled
+    showAd(
+      () => {
+        // Ad completed — process withdrawal
+        setTimeout(() => {
+          setProcessing(false);
+          handleWithdraw(selected);
+          const rp = (selected * RATE).toLocaleString('id-ID', { minimumFractionDigits: 0 });
+          setSuccess(isIndo
+            ? `Penarikan ${selected.toLocaleString('id-ID')} POIN (Rp${rp}) ke DANA ${phone} berhasil!`
+            : `Withdrawal of ${selected.toLocaleString()} pts (Rp${rp}) to DANA ${phone} done!`
+          );
+        }, 1800);
+      },
+      () => {
+        // Ad dismissed/cancelled — unlock modal so user can try again
         setProcessing(false);
-        handleWithdraw(selected);
-        const rp = (selected * RATE).toLocaleString('id-ID', { minimumFractionDigits: 0 });
-        setSuccess(isIndo
-          ? `Penarikan ${selected.toLocaleString('id-ID')} POIN (Rp${rp}) ke DANA ${phone} berhasil!`
-          : `Withdrawal of ${selected.toLocaleString()} pts (Rp${rp}) to DANA ${phone} done!`
-        );
-      }, 1800);
-    });
+        setError(isIndo
+          ? 'Iklan dibatalkan. Tonton iklan hingga selesai untuk memproses penarikan.'
+          : 'Ad cancelled. Please watch the full ad to process your withdrawal.');
+      }
+    );
   };
 
   return (
@@ -77,7 +87,7 @@ export function WithdrawModal() {
               <Text style={styles.sub}>1,000 POIN = Rp10</Text>
             </View>
             <TouchableOpacity onPress={close} disabled={processing}>
-              <Ionicons name="close" size={22} color="#94a3b8" />
+              <Ionicons name="close" size={22} color={processing ? '#334155' : '#94a3b8'} />
             </TouchableOpacity>
           </View>
 
@@ -136,14 +146,18 @@ export function WithdrawModal() {
             {/* Summary */}
             <View style={styles.summary}>
               <Text style={styles.summaryLabel}>{isIndo ? 'Akan Ditarik:' : 'Withdrawing:'}</Text>
-              <Text style={styles.summaryVal}>{selected.toLocaleString('id-ID')} POIN → Rp{(selected * RATE).toLocaleString('id-ID')}</Text>
+              <Text style={styles.summaryVal}>
+                {selected.toLocaleString('id-ID')} POIN → Rp{(selected * RATE).toLocaleString('id-ID')}
+              </Text>
             </View>
 
             {/* Ad notice */}
             <View style={styles.adNotice}>
               <Ionicons name="tv-outline" size={13} color="#f59e0b" />
               <Text style={styles.adNoticeText}>
-                {isIndo ? 'Tonton iklan singkat untuk memproses penarikan' : 'Watch a short ad to process withdrawal'}
+                {isIndo
+                  ? 'Tonton iklan hingga selesai untuk memproses penarikan'
+                  : 'Watch the full ad to process withdrawal'}
               </Text>
             </View>
 
@@ -162,13 +176,19 @@ export function WithdrawModal() {
             )}
 
             {/* Submit */}
-            <TouchableOpacity style={[styles.submitBtn, processing && { opacity: 0.6 }]} onPress={submit} disabled={processing}>
+            <TouchableOpacity
+              style={[styles.submitBtn, processing && styles.btnDisabled]}
+              onPress={submit}
+              disabled={processing}
+            >
               {processing ? (
                 <ActivityIndicator color="#020617" />
               ) : (
                 <>
                   <Ionicons name="play-circle" size={18} color="#020617" />
-                  <Text style={styles.submitBtnText}>{isIndo ? 'TONTON IKLAN & TARIK' : 'WATCH AD & WITHDRAW'}</Text>
+                  <Text style={styles.submitBtnText}>
+                    {isIndo ? 'TONTON IKLAN & TARIK' : 'WATCH AD & WITHDRAW'}
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -249,5 +269,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', gap: 8,
     marginTop: 14, marginBottom: 6,
   },
+  btnDisabled: { opacity: 0.55 },
   submitBtnText: { fontFamily: 'Inter_700Bold', fontSize: 15, color: '#020617' },
 });

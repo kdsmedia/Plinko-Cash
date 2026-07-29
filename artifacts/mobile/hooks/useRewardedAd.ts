@@ -17,7 +17,6 @@ try {
 export function useRewardedAd() {
   const adRef = useRef<any>(null);
   const loadedRef = useRef(false);
-  const listenersRef = useRef<(() => void)[]>([]);
 
   const preload = useCallback(() => {
     if (!RewardedAd) return;
@@ -28,23 +27,25 @@ export function useRewardedAd() {
       adRef.current = ad;
       loadedRef.current = false;
 
-      const unsub1 = ad.addAdEventListener(RewardedAdEventType.LOADED, () => {
+      ad.addAdEventListener(RewardedAdEventType.LOADED, () => {
         loadedRef.current = true;
       });
-      const unsub2 = ad.addAdEventListener(RewardedAdEventType.ERROR, () => {
+      ad.addAdEventListener(RewardedAdEventType.ERROR, () => {
         loadedRef.current = false;
       });
-      listenersRef.current = [unsub1, unsub2];
       ad.load();
     } catch {}
   }, []);
 
   /**
-   * Show rewarded ad, then call onRewarded.
-   * Falls back to calling onRewarded immediately if AdMob is unavailable (Expo Go).
+   * Show rewarded ad.
+   * - onRewarded: called when user completes the ad and earns reward.
+   * - onCancelled: called when user closes ad early OR ad fails — always
+   *   resolves so callers are never stuck in a loading state.
+   * Falls back to calling onRewarded immediately if AdMob unavailable (Expo Go).
    */
   const showAd = useCallback(
-    (onRewarded: () => void) => {
+    (onRewarded: () => void, onCancelled?: () => void) => {
       if (!RewardedAd || !adRef.current || !loadedRef.current) {
         // No native ads — reward immediately (Expo Go / dev without native build)
         onRewarded();
@@ -53,9 +54,12 @@ export function useRewardedAd() {
       }
       try {
         const ad = adRef.current;
+        let rewarded = false;
+
         const unsubReward = ad.addAdEventListener(
           RewardedAdEventType.EARNED_REWARD,
           () => {
+            rewarded = true;
             onRewarded();
           }
         );
@@ -66,11 +70,16 @@ export function useRewardedAd() {
             unsubClose();
             loadedRef.current = false;
             preload();
+            // If ad closed without reward (dismissed early), call onCancelled
+            if (!rewarded) {
+              onCancelled?.();
+            }
           }
         );
         ad.show();
       } catch {
-        onRewarded();
+        // Ad show failed — treat as cancelled so UI resets cleanly
+        onCancelled?.();
         preload();
       }
     },
