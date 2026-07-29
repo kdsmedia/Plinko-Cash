@@ -12,7 +12,8 @@ import {
 } from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { GameProvider } from '@/contexts/GameContext';
+import { GameProvider, useGame } from '@/contexts/GameContext';
+import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -22,6 +23,13 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" />
     </Stack>
   );
+}
+
+/** Mounted inside GameProvider so it can read soundEnabled from context */
+function BackgroundMusicController() {
+  const { settings } = useGame();
+  useBackgroundMusic(settings.soundEnabled);
+  return null;
 }
 
 export default function RootLayout() {
@@ -45,6 +53,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <GameProvider>
+            <BackgroundMusicController />
             <StatusBar style="light" backgroundColor="#020617" />
             <RootLayoutNav />
           </GameProvider>

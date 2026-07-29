@@ -102,7 +102,7 @@ export function SpinWheelModal() {
     showAd(
       () => {
         // Ad completed — give reward
-        handleWinSpinWheel(result.type, result.value);
+        handleWinSpinWheel(result.type as 'cash' | 'balls', result.value);
         setClaiming(false);
         close();
       },

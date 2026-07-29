@@ -42,7 +42,6 @@ export function PlinkoBoard() {
         javaScriptEnabled
         originWhitelist={['*']}
         style={styles.webview}
-        androidHardwareAccelerationDisabled={false}
       />
     </View>
   );
