@@ -1,0 +1,13 @@
+build:
+  name: Plinko Cash Development Build
+  steps:
+    - eas/checkout
+    - run:
+        name: Install pnpm v10
+        command: npm install -g pnpm@10.26.1
+    - eas/install_node_modules
+    - eas/prebuild:
+        inputs:
+          platform: android
+    - eas/run_gradle
+    - eas/find_and_upload_build_artifacts
