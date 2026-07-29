@@ -1,0 +1,1 @@
+- [Plinko Cash app architecture](plinko-cash-arch.md) — WebView physics, POIN system, AdMob, APK-ready build notes.
